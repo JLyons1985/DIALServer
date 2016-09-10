@@ -228,7 +228,7 @@ void run_ssdp(int port, const char *pFriendlyName, const char * pModelName, cons
         strncpy(friendly_name, pFriendlyName, sizeof(friendly_name));
         friendly_name[255] = '\0';
     } else {
-        strcpy(friendly_name, "DIAL server sample");
+        strcpy(friendly_name, "Rachels Mirror");
     }
     if(pModelName) {
         strncpy(model_name, pModelName, sizeof(model_name));

@@ -34,6 +34,9 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <regex.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 #include "dial_server.h"
 #include "dial_options.h"
@@ -50,7 +53,7 @@ static char *spDefaultNetflix = "../../../src/platform/qt/netflix";
 static char *spDefaultData="../../../src/platform/qt/data";
 static char *spNfDataDir = "NF_DATA_DIR=";
 static char *defaultLaunchParam = "source_type=12";
-static char *spDefaultFriendlyName = "DIAL server sample";
+static char *spDefaultFriendlyName = "Rachel's Mirror";
 static char *spDefaultModelName = "NOT A VALID MODEL NAME";
 static char *spDefaultUuid = "deadbeef-dead-beef-dead-beefdeadbeef";
 static char spDataDir[BUFSIZE];
@@ -60,6 +63,10 @@ static char spModelName[BUFSIZE];
 static char spUuid[BUFSIZE];
 extern bool wakeOnWifiLan;
 static int gDialPort;
+static int mirrorDialPort = 7465;
+static int bufLen = 512;
+//static int nPack = 10;
+static char *mirrorIP = "10.0.0.7";
 
 static bool sUseNFAppManager=false;
 
@@ -73,6 +80,49 @@ static char *spYouTubePS3UserAgent = "--user-agent="
 
 // Adding 20 bytes for prepended source_type for Netflix
 static char sQueryParam[DIAL_MAX_PAYLOAD+DIAL_MAX_ADDITIONALURL+40];
+
+void diep(char *s)
+{
+	perror(s);
+	exit(1);
+}
+
+void sendMessageToMirror(char msg[])
+{
+
+	struct sockaddr_in si_other;
+	int s, slen = sizeof(si_other);
+	//char buf[bufLen];
+	char message[bufLen];
+	
+	//printf("Message: %s", msg);
+ 
+	if ((s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1)
+	{
+		diep("socket");
+	}
+	
+	memset((char *) &si_other, 0, sizeof(si_other));
+	si_other.sin_family = AF_INET;
+	si_other.sin_port = htons(mirrorDialPort);
+     
+	if (inet_aton(mirrorIP, &si_other.sin_addr) == 0) 
+	{
+		fprintf(stderr, "inet_aton() failed\n");
+		//exit;
+	}
+	
+	strncpy(message, msg, bufLen);
+	
+	printf("Sending this to mirror: %s", message);
+	
+	//send the message
+	if (sendto(s, message, strlen(message), 0, (struct sockaddr *) &si_other, slen) == -1)
+	{
+		diep("sendto()");
+	}	
+
+}
 
 static int doesMatch( char* pzExp, char* pzStr)
 {
@@ -204,12 +254,16 @@ static DIALStatus youtube_start(DIALServer *ds, const char *appname,
     printf("\n\n ** LAUNCH YouTube ** with payload %s\n\n", payload);
 
     char url[512] = {0,}, data[512] = {0,};
+	char urlToMirror[512] = { 0, };
     if (strlen(payload) && strlen(additionalDataUrl)){
         sprintf( url, "https://www.youtube.com/tv?%s&%s", payload, additionalDataUrl);
+		sprintf(urlToMirror, "STARThttps://www.youtube.com/tv?%s", payload);
     }else if (strlen(payload)){
         sprintf( url, "https://www.youtube.com/tv?%s", payload);
+	    sprintf(urlToMirror, "STARThttps://www.youtube.com/tv?%s", payload);
     }else{
         sprintf( url, "https://www.youtube.com/tv");
+	    sprintf(urlToMirror, "STARThttps://www.youtube.com/tv");
     }
     sprintf( data, "--user-data-dir=%s/.config/google-chrome-dial", getenv("HOME") );
 
@@ -219,12 +273,20 @@ static DIALStatus youtube_start(DIALServer *ds, const char *appname,
     };
     runApplication( youtube_args, run_id );
 
+	// Send the payload the url to the mirror
+	sendMessageToMirror(urlToMirror);
+        printf("This is the thing to send to mirror: %s\n", urlToMirror);
+
     return kDIALStatusRunning;
 }
 
 static DIALStatus youtube_hide(DIALServer *ds, const char *app_name,
                                         DIAL_run_t *run_id, void *callback_data)
 {
+	char urlToMirror[512] = { 0, };
+	sprintf(urlToMirror, "HIDE");
+        printf("This is the thing to send to mirror: %s\n", urlToMirror);
+	sendMessageToMirror(urlToMirror);
     return (isAppRunning( spAppYouTube, spAppYouTubeMatch )) ? kDIALStatusRunning : kDIALStatusStopped;
 }
         
@@ -238,6 +300,12 @@ static DIALStatus youtube_status(DIALServer *ds, const char *appname,
 static void youtube_stop(DIALServer *ds, const char *appname, DIAL_run_t run_id,
                          void *callback_data) {
     printf("\n\n ** KILL YouTube **\n\n");
+	
+	char urlToMirror[512] = { 0, };
+	sprintf(urlToMirror, "STOP");
+        printf("This is the thing to send to mirror: %s\n", urlToMirror);
+	sendMessageToMirror(urlToMirror);
+	                         
     pid_t pid;
     if ((pid = isAppRunning( spAppYouTube, spAppYouTubeMatch ))) {
         kill(pid, SIGTERM);
