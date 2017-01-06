@@ -70,9 +70,9 @@ static char *mirrorIP = "10.0.0.7";
 
 static bool sUseNFAppManager=false;
 
-static char *spAppYouTube = "chrome";
-static char *spAppYouTubeMatch = "chrome.*google-chrome-dial";
-static char *spAppYouTubeExecutable = "/opt/google/chrome/google-chrome";
+static char *spAppYouTube = ""//"chrome";
+static char *spAppYouTubeMatch = ""//"chrome.*google-chrome-dial";
+static char *spAppYouTubeExecutable = ""//"/opt/google/chrome/google-chrome";
 static char *spYouTubePS3UserAgent = "--user-agent="
     "Mozilla/5.0 (PS3; Leanback Shell) AppleWebKit/535.22 (KHTML, like Gecko) "
     "Chrome/19.0.1048.0 LeanbackShell/01.00.01.73 QA Safari/535.22 Sony PS3/ "
